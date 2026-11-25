@@ -1,0 +1,151 @@
+.events-page {
+  padding: 64px 0;
+}
+
+.page-heading {
+  margin-bottom: 30px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #687b35;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+h1 {
+  margin: 0;
+  color: #242722;
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 550;
+  letter-spacing: -0.06em;
+}
+
+.intro,
+.event-copy p {
+  color: #73776e;
+}
+
+.intro {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.event-list {
+  display: grid;
+  gap: 12px;
+}
+
+.event-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 22px;
+  border: 1px solid #e8e8e3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.event-date {
+  width: 150px;
+  flex: 0 0 auto;
+  color: #687b35;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.event-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.event-copy h2,
+.event-copy p {
+  margin: 0;
+}
+
+.event-copy h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.event-copy h2 a {
+  color: #292c27;
+  text-decoration: none;
+}
+
+.event-copy h2 a:hover {
+  text-decoration: underline;
+}
+
+.event-copy p {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.capacity {
+  color: #777a72;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.message {
+  margin: 24px 0;
+  color: #73776e;
+  font-size: 14px;
+}
+
+.error {
+  color: #a43f35;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 24px;
+  color: #73776e;
+  font-size: 12px;
+}
+
+.secondary-button {
+  padding: 9px 13px;
+  border: 1px solid #dfe2d7;
+  border-radius: 7px;
+  background: #fff;
+  color: #34372f;
+  cursor: pointer;
+  font: inherit;
+}
+
+.secondary-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+@media (max-width: 620px) {
+  .events-page {
+    padding: 42px 0;
+  }
+
+  .event-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 9px 14px;
+    padding: 17px;
+  }
+
+  .event-date {
+    width: 100%;
+  }
+
+  .capacity {
+    width: 100%;
+  }
+
+  .pagination {
+    gap: 10px;
+  }
+}

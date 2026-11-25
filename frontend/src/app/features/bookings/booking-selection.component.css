@@ -1,0 +1,93 @@
+.booking-page {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 64px 0 80px;
+}
+
+.eyebrow {
+  margin: 0 0 13px;
+  color: #687b35;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+h1 {
+  margin: 0;
+  color: #242722;
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 550;
+  letter-spacing: -0.06em;
+}
+
+.intro,
+.message {
+  color: #73776e;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.intro {
+  margin: 14px 0 30px;
+}
+
+.booking-form {
+  display: grid;
+  gap: 11px;
+  padding: 25px;
+  border: 1px solid #e8e8e3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+label {
+  margin-top: 5px;
+  color: #454940;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+select,
+input {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 12px;
+  border: 1px solid #dfe2d7;
+  border-radius: 7px;
+  background: #fff;
+  color: #30332d;
+  font: inherit;
+}
+
+.primary-button {
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 7px;
+  background: #53652a;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.error {
+  margin: 5px 0 0;
+  color: #a43f35;
+  font-size: 13px;
+}
+
+.message {
+  margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+  .booking-page {
+    padding: 42px 0 56px;
+  }
+}

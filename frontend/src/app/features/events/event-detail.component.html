@@ -1,0 +1,28 @@
+<section class="detail-page" aria-labelledby="event-title">
+  <a class="back-link" routerLink="/events">← Volver a eventos</a>
+
+  @if (loading()) {
+    <p class="message" aria-live="polite">Cargando evento...</p>
+  } @else if (error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+  } @else if (event(); as item) {
+    <article class="event-detail">
+      <p class="eyebrow">DETALLE DEL EVENTO</p>
+      <h1 id="event-title">{{ item.title }}</h1>
+      <p class="event-meta">{{ item.starts_at | date: 'fullDate' }} · {{ item.starts_at | date: 'shortTime' }}</p>
+      <dl>
+        <div>
+          <dt>Lugar</dt>
+          <dd>{{ item.venue }}</dd>
+        </div>
+        <div>
+          <dt>Capacidad</dt>
+          <dd>{{ item.capacity }} lugares</dd>
+        </div>
+      </dl>
+      @if (item.description) {
+        <p class="description">{{ item.description }}</p>
+      }
+    </article>
+  }
+</section>

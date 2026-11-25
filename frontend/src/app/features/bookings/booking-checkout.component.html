@@ -1,0 +1,67 @@
+<section class="checkout-page" aria-labelledby="checkout-title">
+  <a class="back-link" routerLink="/bookings/new">← Volver a reservas</a>
+
+  @if (loading()) {
+    <p class="message" aria-live="polite">Cargando reserva...</p>
+  } @else if (error() && !booking()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+  } @else if (booking(); as order) {
+    <article class="checkout-card">
+      <p class="eyebrow">CHECKOUT</p>
+      <h1 id="checkout-title">Tu reserva</h1>
+      <dl>
+        <div>
+          <dt>Evento</dt>
+          <dd>{{ order.event_id }}</dd>
+        </div>
+        <div>
+          <dt>Cantidad</dt>
+          <dd>{{ order.quantity }}</dd>
+        </div>
+        <div>
+          <dt>Creada</dt>
+          <dd>{{ order.created_at | date: 'medium' }}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd class="status" [attr.data-status]="order.status">{{ order.status }}</dd>
+        </div>
+      </dl>
+
+      @if (order.status === 'pending') {
+        <div class="countdown" aria-live="polite">
+          @if (secondsRemaining() > 0) {
+            <span>Tiempo para confirmar</span>
+            <strong>{{ countdown() }}</strong>
+          } @else {
+            <span>La reserva venció</span>
+            <strong>0:00</strong>
+          }
+        </div>
+      } @else if (order.status === 'confirmed') {
+        <p class="message success">Reserva confirmada.</p>
+      } @else {
+        <p class="message">Esta reserva ya fue cancelada.</p>
+      }
+
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+
+      @if (order.status === 'pending') {
+        <div class="actions">
+          <button
+            class="primary-button"
+            type="button"
+            [disabled]="busy() || secondsRemaining() === 0"
+            (click)="confirm()">
+            {{ busy() ? 'Procesando...' : 'Confirmar reserva' }}
+          </button>
+          <button class="secondary-button" type="button" [disabled]="busy()" (click)="cancel()">
+            Cancelar reserva
+          </button>
+        </div>
+      }
+    </article>
+  }
+</section>

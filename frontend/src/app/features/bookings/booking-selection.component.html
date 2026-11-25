@@ -1,0 +1,39 @@
+<section class="booking-page" aria-labelledby="booking-title">
+  <p class="eyebrow">RESERVAS</p>
+  <h1 id="booking-title">Elige tus entradas</h1>
+  <p class="intro">La reserva queda pendiente durante 10 minutos mientras completas el checkout.</p>
+
+  @if (loadingEvents()) {
+    <p class="message" aria-live="polite">Cargando eventos...</p>
+  } @else if (events().length === 0 && !error()) {
+    <p class="message">No hay eventos disponibles para reservar.</p>
+  } @else {
+    <form class="booking-form" (submit)="$event.preventDefault(); submit()">
+      <label for="event">Evento</label>
+      <select id="event" [value]="eventID()" (change)="changeEvent($event)" required>
+        <option value="" disabled>Selecciona un evento</option>
+        @for (event of events(); track event.id) {
+          <option [value]="event.id">{{ event.title }} · {{ event.venue }}</option>
+        }
+      </select>
+
+      <label for="quantity">Cantidad</label>
+      <input
+        id="quantity"
+        type="number"
+        min="1"
+        step="1"
+        [value]="quantity()"
+        (input)="changeQuantity($event)"
+        required />
+
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+
+      <button class="primary-button" type="submit" [disabled]="submitting()">
+        {{ submitting() ? 'Reservando...' : 'Continuar al checkout' }}
+      </button>
+    </form>
+  }
+</section>

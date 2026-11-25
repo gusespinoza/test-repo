@@ -1,0 +1,55 @@
+name: Backend
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://tickets:test-password@localhost:5432/tickets?sslmode=disable
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tickets
+          POSTGRES_USER: tickets
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tickets -d tickets"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Build
+        working-directory: backend
+        run: go build ./...
+
+      - name: Unit tests
+        working-directory: backend
+        run: go test ./...
+
+      - name: Integration tests
+        working-directory: backend
+        run: go test -tags=integration ./...

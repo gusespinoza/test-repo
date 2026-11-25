@@ -1,0 +1,30 @@
+<main class="shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/events" aria-label="Inicio">
+      <span class="brand-mark">A</span>
+      <span>Angular <span class="brand-divider">+</span> Go</span>
+    </a>
+    <nav aria-label="Navegación principal">
+      <a routerLink="/events" routerLinkActive="active">Eventos</a>
+      <a routerLink="/bookings/new" routerLinkActive="active">Reservas</a>
+    </nav>
+    <span class="environment">
+      <span class="environment-dot" [class.online]="apiStatus() === 'online'"
+        [class.offline]="apiStatus() === 'offline'"></span>
+      @if (apiStatus() === 'loading') {
+        API conectando
+      } @else if (apiStatus() === 'online') {
+        API disponible
+      } @else {
+        API desconectada
+      }
+    </span>
+  </header>
+
+  <router-outlet />
+
+  <footer>
+    <span>Angular + Go</span>
+    <span>Frontend :4200 <span class="footer-separator">·</span> API :8080</span>
+  </footer>
+</main>

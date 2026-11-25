@@ -1,0 +1,51 @@
+<section class="events-page" aria-labelledby="events-title">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">AGENDA</p>
+      <h1 id="events-title">Eventos</h1>
+      <p class="intro">Explora los próximos eventos.</p>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <p class="message" aria-live="polite">Cargando eventos...</p>
+  } @else if (error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+    <button class="secondary-button" type="button" (click)="loadPage(pageNumber())">Reintentar</button>
+  } @else if (result(); as page) {
+    @if (page.items.length === 0) {
+      <p class="message">Todavía no hay eventos publicados.</p>
+    } @else {
+      <div class="event-list">
+        @for (event of page.items; track event.id) {
+          <article class="event-card">
+            <div class="event-date">{{ event.starts_at | date: 'medium' }}</div>
+            <div class="event-copy">
+              <h2><a [routerLink]="['/events', event.id]">{{ event.title }}</a></h2>
+              <p>{{ event.venue }}</p>
+            </div>
+            <span class="capacity">{{ event.capacity }} lugares</span>
+          </article>
+        }
+      </div>
+    }
+
+    <nav class="pagination" aria-label="Paginación de eventos">
+      <button
+        class="secondary-button"
+        type="button"
+        [disabled]="loading() || pageNumber() <= 1"
+        (click)="previousPage()">
+        Anterior
+      </button>
+      <span>Página {{ page.page }} de {{ pageCount() }}</span>
+      <button
+        class="secondary-button"
+        type="button"
+        [disabled]="loading() || pageNumber() >= pageCount()"
+        (click)="nextPage()">
+        Siguiente
+      </button>
+    </nav>
+  }
+</section>
