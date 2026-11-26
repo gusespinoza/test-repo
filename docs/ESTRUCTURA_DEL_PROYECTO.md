@@ -39,6 +39,8 @@ Durante el desarrollo, Angular sirve la aplicación en el puerto `4200` y reenv�
 │       ├── ratelimit/
 │       │   ├── middleware.go
 │       │   └── middleware_test.go
+│       ├── cleanup/
+│       │   └── worker.go
 │       ├── events/
 │           ├── domain/
 │           │   └── event.go
@@ -118,7 +120,7 @@ Angular CLI y npm también generan archivos de configuración, como `tsconfig*.j
 
 ## Backend: monolito modular
 
-El punto de composición está en `backend/main.go`: configura conexiones, construye las dependencias de los módulos `auth`, `events` y `bookings` y registra las rutas HTTP. El rate limiter transversal vive en `backend/internal/ratelimit`. Mantener los módulos bajo `internal` evita que otras aplicaciones importen accidentalmente estos paquetes como una API pública.
+El punto de composición está en `backend/main.go`: configura conexiones, construye las dependencias de los módulos `auth`, `events` y `bookings` y registra las rutas HTTP. El rate limiter transversal vive en `backend/internal/ratelimit`; el worker de `backend/internal/cleanup` cancela periódicamente las órdenes pendientes expiradas y se detiene durante el apagado ordenado. Mantener los módulos bajo `internal` evita que otras aplicaciones importen accidentalmente estos paquetes como una API pública.
 
 - **`domain/`**: modelo de usuario y errores del dominio.
 - **`handlers/`**: adaptadores HTTP. Decodifican login, traducen errores a códigos HTTP y producen la respuesta JSON.
@@ -127,12 +129,13 @@ El punto de composición está en `backend/main.go`: configura conexiones, const
 - **`token/`**: emisión y validación de JWT HS256, con `issuer`, `subject`, rol, identificador único y expiración.
 - **`middleware/`**: valida el esquema `Bearer`, la firma y los claims; consulta Redis para rechazar tokens revocados y expone helpers de autenticación y autorización por rol.
 - **`internal/ratelimit/`**: aplica límites atómicos con Redis exclusivamente a `POST /api/auth/login`: 5 intentos por IP y 10 por email en 60 segundos. Si un límite se excede, responde `429` con `Retry-After`; si Redis falla, registra el error y deja pasar la petición.
+- **`internal/cleanup/`**: cancela periódicamente en PostgreSQL las órdenes `pending` cuya expiración ya pasó; Redis libera los locks por TTL sin intervención del worker.
 
 Los endpoints actuales son `POST /api/auth/login`, `POST /api/auth/refresh` y `POST /api/auth/logout`. Login y refresh devuelven el access token, su duración y el rol; el refresh token se transporta únicamente en una cookie `HttpOnly`, `Secure`, `SameSite=Lax`. Los refresh tokens viven 7 días, se almacenan como hashes en `auth_refresh_tokens` y cada refresh rota el token dentro de la misma familia. Reutilizar un token revocado invalida toda la familia y responde `401`. Logout requiere un access token válido, revoca la familia y limpia la cookie. La prueba de integración con PostgreSQL efímero está en `internal/auth/integration/`. Las cuentas se provisionan fuera de este módulo; no hay registro público ni recuperación de contraseña.
 
-El módulo `backend/internal/events` organiza la gestión de eventos por dominio, handlers HTTP, servicio y repositorio PostgreSQL. El dominio declara `Event` y los contratos paginados; los handlers validan las peticiones y traducen errores a HTTP; el servicio valida entradas y coordina casos de uso; el repositorio consulta y actualiza PostgreSQL. `GET /api/events` permite paginar con `page` y `limit` (por defecto 1 y 20; máximo 100); `GET /api/events/{id}` devuelve el detalle. Crear y actualizar con `POST /api/events` y `PUT /api/events/{id}` requiere autenticación y rol `admin`. Su tabla se define en `backend/internal/events/repository/schema.sql`.
+El módulo `backend/internal/events` organiza la gestión de eventos por dominio, handlers HTTP, servicio y repositorio PostgreSQL. El dominio declara `Event` y los contratos paginados; los handlers validan las peticiones y traducen errores a HTTP; el servicio valida entradas y coordina casos de uso; el repositorio consulta y actualiza PostgreSQL. `GET /api/events` permite paginar con `page` y `limit` (por defecto 1 y 20; máximo 100); `GET /api/events/{id}` devuelve el detalle. `GET /api/admin/events` requiere rol `admin` y añade el campo `sold` a cada evento. Crear y actualizar con `POST /api/events` y `PUT /api/events/{id}` también requiere ese rol. Su tabla se define en `backend/internal/events/repository/schema.sql`; el contador de ventas se añade en el esquema de bookings.
 
-El módulo `backend/internal/bookings` crea órdenes idempotentes con estado `pending`, mantiene las retenciones temporales en Redis y confirma/cancela con transacciones PostgreSQL. Todas las rutas requieren el middleware de autenticación; confirmar y cancelar solo los puede realizar el dueño, mientras que la consulta también permite el rol `admin`. PostgreSQL bloquea la fila del evento para coordinar capacidad y ventas con el contador Redis. Su esquema añade `events.sold` y crea `orders`; aplícalo después de los esquemas de `auth` y `events`.
+El módulo `backend/internal/bookings` crea órdenes idempotentes con estado `pending`, mantiene las retenciones temporales en Redis y confirma/cancela con transacciones PostgreSQL. Todas las rutas requieren el middleware de autenticación; confirmar y cancelar solo los puede realizar el dueño, mientras que la consulta también permite el rol `admin`. `GET /api/admin/bookings` exige rol `admin`, pagina las órdenes (máximo 100 por página) y usa JOINs para incluir el email del comprador y el título del evento. PostgreSQL bloquea la fila del evento para coordinar capacidad y ventas con el contador Redis. Su esquema añade `events.sold` y crea `orders`; aplícalo después de los esquemas de `auth` y `events`.
 
 ## Frontend
 
@@ -146,6 +149,8 @@ La funcionalidad de eventos vive en `app/features/events/`:
 - **`event-detail.component.*`**: consulta y presentación del detalle de un evento.
 
 La funcionalidad de reservas vive en `app/features/bookings/`: `bookings.models.ts` replica el contrato JSON de `Order`, `bookings.service.ts` encapsula las llamadas a la API, `booking-selection.component.*` permite elegir evento y cantidad, y `booking-checkout.component.*` muestra la reserva pendiente con una cuenta regresiva hasta `expires_at`.
+
+El área de administración vive en `app/features/admin/` y carga sus componentes bajo demanda. `AdminEventsComponent` presenta eventos y ventas, y permite crear eventos; `AdminBookingsComponent` muestra las órdenes con paginación. `AdminGuard` verifica que el rol en memoria sea `admin` antes de activar las rutas.
 
 El código común de autenticación está en `app/core/auth/`:
 

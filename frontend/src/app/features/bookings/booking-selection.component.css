@@ -59,6 +59,16 @@ input {
   font: inherit;
 }
 
+.availability-message {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.availability-message.low-stock {
+  color: #7a5a17;
+}
+
 .primary-button {
   min-height: 44px;
   margin-top: 12px;
@@ -72,8 +82,12 @@ input {
 }
 
 .primary-button:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.6;
+}
+
+.primary-button:disabled.is-submitting {
+  cursor: wait;
 }
 
 .error {

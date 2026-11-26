@@ -140,6 +140,40 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id string) (domain.Or
 	return order, nil
 }
 
+func (r *PostgresRepository) ListAll(ctx context.Context, offset, limit int) ([]domain.AdminBooking, int64, error) {
+	var total int64
+	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM orders`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("contar órdenes para administración: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT o.id::text, o.user_id::text, o.event_id::text, o.quantity, o.status,
+		       o.idempotency_key, o.expires_at, o.created_at, u.email, e.title
+		FROM orders AS o
+		JOIN auth_users AS u ON u.id = o.user_id
+		JOIN events AS e ON e.id = o.event_id
+		ORDER BY o.created_at DESC, o.id DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("listar órdenes para administración: %w", err)
+	}
+	defer rows.Close()
+
+	bookings := make([]domain.AdminBooking, 0, limit)
+	for rows.Next() {
+		booking, err := scanAdminBooking(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("leer orden para administración: %w", err)
+		}
+		bookings = append(bookings, booking)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("recorrer órdenes para administración: %w", err)
+	}
+	return bookings, total, nil
+}
+
 func (r *PostgresRepository) Confirm(ctx context.Context, userID, id string) (domain.Order, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -369,4 +403,23 @@ func scanOrder(row scanner) (domain.Order, error) {
 	)
 	order.Status = domain.Status(status)
 	return order, err
+}
+
+func scanAdminBooking(row scanner) (domain.AdminBooking, error) {
+	var booking domain.AdminBooking
+	var status string
+	err := row.Scan(
+		&booking.ID,
+		&booking.UserID,
+		&booking.EventID,
+		&booking.Quantity,
+		&status,
+		&booking.IdempotencyKey,
+		&booking.ExpiresAt,
+		&booking.CreatedAt,
+		&booking.UserEmail,
+		&booking.EventTitle,
+	)
+	booking.Status = domain.Status(status)
+	return booking, err
 }

@@ -11,7 +11,8 @@ const MaxPageSize = 100
 
 type Repository interface {
 	List(ctx context.Context, offset, limit int) ([]domain.Event, int64, error)
-	FindByID(ctx context.Context, id string) (domain.Event, error)
+	ListAdmin(ctx context.Context, offset, limit int) ([]domain.AdminEvent, int64, error)
+	FindByID(ctx context.Context, id string) (domain.EventDetail, error)
 	Create(ctx context.Context, input domain.EventInput) (domain.Event, error)
 	Update(ctx context.Context, id string, input domain.EventInput) (domain.Event, error)
 }
@@ -25,22 +26,32 @@ func New(repository Repository) *Service {
 }
 
 func (s *Service) List(ctx context.Context, page, limit int) (domain.EventPage, error) {
-	if page < 1 || limit < 1 || limit > MaxPageSize {
-		return domain.EventPage{}, domain.ErrInvalidPageRange
-	}
-	maxInt := int(^uint(0) >> 1)
-	if page-1 > maxInt/limit {
-		return domain.EventPage{}, domain.ErrInvalidPageRange
+	offset, err := paginationOffset(page, limit)
+	if err != nil {
+		return domain.EventPage{}, err
 	}
 
-	items, total, err := s.repository.List(ctx, (page-1)*limit, limit)
+	items, total, err := s.repository.List(ctx, offset, limit)
 	if err != nil {
 		return domain.EventPage{}, err
 	}
 	return domain.EventPage{Items: items, Page: page, Limit: limit, Total: total}, nil
 }
 
-func (s *Service) FindByID(ctx context.Context, id string) (domain.Event, error) {
+func (s *Service) ListAdmin(ctx context.Context, page, limit int) (domain.AdminEventPage, error) {
+	offset, err := paginationOffset(page, limit)
+	if err != nil {
+		return domain.AdminEventPage{}, err
+	}
+
+	items, total, err := s.repository.ListAdmin(ctx, offset, limit)
+	if err != nil {
+		return domain.AdminEventPage{}, err
+	}
+	return domain.AdminEventPage{Items: items, Page: page, Limit: limit, Total: total}, nil
+}
+
+func (s *Service) FindByID(ctx context.Context, id string) (domain.EventDetail, error) {
 	return s.repository.FindByID(ctx, id)
 }
 
@@ -67,4 +78,15 @@ func validate(input domain.EventInput) (domain.EventInput, error) {
 		return domain.EventInput{}, domain.ErrInvalidEvent
 	}
 	return input, nil
+}
+
+func paginationOffset(page, limit int) (int, error) {
+	if page < 1 || limit < 1 || limit > MaxPageSize {
+		return 0, domain.ErrInvalidPageRange
+	}
+	maxInt := int(^uint(0) >> 1)
+	if page-1 > maxInt/limit {
+		return 0, domain.ErrInvalidPageRange
+	}
+	return (page - 1) * limit, nil
 }

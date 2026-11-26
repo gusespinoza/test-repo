@@ -8,9 +8,12 @@ import (
 	"angular-go-starter/backend/internal/bookings/domain"
 )
 
+const MaxPageSize = 100
+
 type Repository interface {
 	CreatePending(ctx context.Context, userID string, input domain.CreateInput) (domain.Order, error)
 	FindByID(ctx context.Context, id string) (domain.Order, error)
+	ListAll(ctx context.Context, offset, limit int) ([]domain.AdminBooking, int64, error)
 	Confirm(ctx context.Context, userID, id string) (domain.Order, error)
 	Cancel(ctx context.Context, userID, id string) (domain.Order, error)
 }
@@ -43,6 +46,22 @@ func (s *Service) Get(ctx context.Context, userID, role, id string) (domain.Orde
 		return domain.Order{}, domain.ErrForbidden
 	}
 	return order, nil
+}
+
+func (s *Service) ListAll(ctx context.Context, page, limit int) (domain.AdminBookingPage, error) {
+	if page < 1 || limit < 1 || limit > MaxPageSize {
+		return domain.AdminBookingPage{}, domain.ErrInvalidPageRange
+	}
+	maxInt := int(^uint(0) >> 1)
+	if page-1 > maxInt/limit {
+		return domain.AdminBookingPage{}, domain.ErrInvalidPageRange
+	}
+
+	items, total, err := s.repository.ListAll(ctx, (page-1)*limit, limit)
+	if err != nil {
+		return domain.AdminBookingPage{}, err
+	}
+	return domain.AdminBookingPage{Items: items, Page: page, Limit: limit, Total: total}, nil
 }
 
 func (s *Service) Confirm(ctx context.Context, userID, id string) (domain.Order, error) {

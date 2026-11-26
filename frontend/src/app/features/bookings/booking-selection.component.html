@@ -17,6 +17,16 @@
         }
       </select>
 
+      @if (checkingAvailability()) {
+        <p class="availability-message" aria-live="polite">Comprobando disponibilidad...</p>
+      } @else if (selectedSoldOut()) {
+        <p class="availability-message error" role="status">Agotado. Selecciona otro evento.</p>
+      } @else if (lowStock()) {
+        <p class="availability-message low-stock" role="status">
+          Últimas {{ selectedAvailability() }} entradas
+        </p>
+      }
+
       <label for="quantity">Cantidad</label>
       <input
         id="quantity"
@@ -31,7 +41,11 @@
         <p class="error" role="alert">{{ error() }}</p>
       }
 
-      <button class="primary-button" type="submit" [disabled]="submitting()">
+      <button
+        class="primary-button"
+        type="submit"
+        [class.is-submitting]="submitting()"
+        [disabled]="submitting() || !canSubmit()">
         {{ submitting() ? 'Reservando...' : 'Continuar al checkout' }}
       </button>
     </form>

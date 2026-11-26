@@ -20,9 +20,21 @@
           <dd>{{ item.capacity }} lugares</dd>
         </div>
       </dl>
+      @if (item.available <= 0) {
+        <p class="availability sold-out" role="status">Agotado</p>
+      } @else if (item.available < 10) {
+        <p class="availability low-stock" role="status">Últimas {{ item.available }} entradas</p>
+      }
       @if (item.description) {
         <p class="description">{{ item.description }}</p>
       }
+      <button
+        class="purchase-button"
+        type="button"
+        [disabled]="item.available <= 0"
+        (click)="buyTickets(item)">
+        {{ item.available <= 0 ? 'Agotado' : 'Comprar entradas' }}
+      </button>
     </article>
   }
 </section>

@@ -22,7 +22,8 @@ const (
 
 type eventService interface {
 	List(ctx context.Context, page, limit int) (domain.EventPage, error)
-	FindByID(ctx context.Context, id string) (domain.Event, error)
+	ListAdmin(ctx context.Context, page, limit int) (domain.AdminEventPage, error)
+	FindByID(ctx context.Context, id string) (domain.EventDetail, error)
 	Create(ctx context.Context, input domain.EventInput) (domain.Event, error)
 	Update(ctx context.Context, id string, input domain.EventInput) (domain.Event, error)
 }
@@ -48,6 +49,25 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("listar eventos: %v", err)
+		writeError(w, http.StatusInternalServerError, "no se pudieron listar los eventos")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {
+	page, limit, err := parsePagination(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "parámetros de paginación inválidos")
+		return
+	}
+	result, err := h.events.ListAdmin(r.Context(), page, limit)
+	if errors.Is(err, domain.ErrInvalidPageRange) {
+		writeError(w, http.StatusBadRequest, "parámetros de paginación inválidos")
+		return
+	}
+	if err != nil {
+		log.Printf("listar eventos de administración: %v", err)
 		writeError(w, http.StatusInternalServerError, "no se pudieron listar los eventos")
 		return
 	}

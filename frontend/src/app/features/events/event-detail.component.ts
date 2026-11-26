@@ -2,11 +2,11 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EMPTY } from 'rxjs';
 import { catchError, filter, map, switchMap, tap } from 'rxjs/operators';
 
-import { Event } from './events.models';
+import { EventDetail } from './events.models';
 import { EventsService } from './events.service';
 
 @Component({
@@ -18,10 +18,11 @@ import { EventsService } from './events.service';
 })
 export class EventDetailComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly eventsService = inject(EventsService);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly event = signal<Event | null>(null);
+  protected readonly event = signal<EventDetail | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
 
@@ -50,5 +51,12 @@ export class EventDetailComponent {
         this.event.set(event);
         this.loading.set(false);
       });
+  }
+
+  protected buyTickets(event: EventDetail): void {
+    if (event.available <= 0) {
+      return;
+    }
+    void this.router.navigate(['/bookings/new'], { queryParams: { event_id: event.id } });
   }
 }

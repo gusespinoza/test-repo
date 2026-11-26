@@ -73,6 +73,44 @@ dd {
   white-space: pre-wrap;
 }
 
+.availability {
+  width: fit-content;
+  margin: 18px 0 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.low-stock {
+  background: #fff3d4;
+  color: #7a5a17;
+}
+
+.sold-out {
+  background: #f6e5e1;
+  color: #974d42;
+}
+
+.purchase-button {
+  min-height: 44px;
+  margin-top: 24px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 7px;
+  background: #53652a;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+}
+
+.purchase-button:disabled {
+  background: #d7d9d1;
+  color: #6f726a;
+  cursor: not-allowed;
+}
+
 .message {
   margin: 28px 0;
   color: #73776e;

@@ -1,11 +1,13 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 
 import { AuthService } from './auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(AuthService);
+  const router = inject(Router);
   const endpoint = request.url.split('?')[0];
 
   if (
@@ -32,10 +34,15 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       }
 
       const currentToken = auth.accessToken();
-      if (currentToken && authorizedRequest.headers.get('Authorization') !== `Bearer ${currentToken}`) {
-        return next(request.clone({
-          setHeaders: { Authorization: `Bearer ${currentToken}` }
-        }));
+      if (
+        currentToken &&
+        authorizedRequest.headers.get('Authorization') !== `Bearer ${currentToken}`
+      ) {
+        return next(
+          request.clone({
+            setHeaders: { Authorization: `Bearer ${currentToken}` }
+          })
+        );
       }
 
       return auth.refresh().pipe(
@@ -44,12 +51,15 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           if (!refreshedToken) {
             return throwError(() => error);
           }
-          return next(request.clone({
-            setHeaders: { Authorization: `Bearer ${refreshedToken}` }
-          }));
+          return next(
+            request.clone({
+              setHeaders: { Authorization: `Bearer ${refreshedToken}` }
+            })
+          );
         }),
         catchError((refreshError: unknown) => {
           auth.clearSession();
+          void router.navigateByUrl('/events');
           return throwError(() => refreshError);
         })
       );

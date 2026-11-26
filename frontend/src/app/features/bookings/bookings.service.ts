@@ -1,8 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { CreateBookingRequest, Order } from './bookings.models';
+import { AdminBookingPage, CreateBookingRequest, Order } from './bookings.models';
 
 @Injectable({ providedIn: 'root' })
 export class BookingsService {
@@ -15,6 +15,11 @@ export class BookingsService {
 
   getBooking(id: string): Observable<Order> {
     return this.http.get<Order>(`${this.endpoint}/${encodeURIComponent(id)}`);
+  }
+
+  listAdminBookings(page = 1, limit = 20): Observable<AdminBookingPage> {
+    const params = new HttpParams().set('page', page).set('limit', limit);
+    return this.http.get<AdminBookingPage>('/api/admin/bookings', { params });
   }
 
   confirmBooking(id: string): Observable<Order> {

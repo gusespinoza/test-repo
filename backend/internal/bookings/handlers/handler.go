@@ -8,15 +8,23 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"angular-go-starter/backend/internal/auth/middleware"
 	"angular-go-starter/backend/internal/bookings/domain"
+	bookingservice "angular-go-starter/backend/internal/bookings/service"
+)
+
+const (
+	defaultAdminPage  = 1
+	defaultAdminLimit = 20
 )
 
 type bookingService interface {
 	Create(ctx context.Context, userID string, input domain.CreateInput) (domain.Order, error)
 	Get(ctx context.Context, userID, role, id string) (domain.Order, error)
+	ListAll(ctx context.Context, page, limit int) (domain.AdminBookingPage, error)
 	Confirm(ctx context.Context, userID, id string) (domain.Order, error)
 	Cancel(ctx context.Context, userID, id string) (domain.Order, error)
 }
@@ -85,6 +93,24 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {
+	page, limit, err := parseAdminPagination(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "parámetros de paginación inválidos")
+		return
+	}
+	result, err := h.bookings.ListAll(r.Context(), page, limit)
+	if errors.Is(err, domain.ErrInvalidPageRange) {
+		writeError(w, http.StatusBadRequest, "parámetros de paginación inválidos")
+		return
+	}
+	if err != nil {
+		writeInternalError(w, err, "no se pudieron listar las reservas")
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
@@ -177,4 +203,31 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	if err := json.NewEncoder(w).Encode(value); err != nil {
 		log.Printf("no se pudo escribir respuesta HTTP: %v", err)
 	}
+}
+
+func parseAdminPagination(r *http.Request) (int, int, error) {
+	page, limit := defaultAdminPage, defaultAdminLimit
+	query := r.URL.Query()
+	if query.Has("page") {
+		value, err := strconv.Atoi(query.Get("page"))
+		if err != nil {
+			return 0, 0, err
+		}
+		page = value
+	}
+	if query.Has("limit") {
+		value, err := strconv.Atoi(query.Get("limit"))
+		if err != nil {
+			return 0, 0, err
+		}
+		limit = value
+	}
+	if page < 1 || limit < 1 || limit > bookingservice.MaxPageSize {
+		return 0, 0, domain.ErrInvalidPageRange
+	}
+	maxInt := int(^uint(0) >> 1)
+	if page-1 > maxInt/limit {
+		return 0, 0, domain.ErrInvalidPageRange
+	}
+	return page, limit, nil
 }

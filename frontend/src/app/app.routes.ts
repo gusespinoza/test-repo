@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { AdminGuard } from './core/auth/admin.guard';
+
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'events' },
   {
@@ -24,6 +26,20 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/bookings/booking-checkout.component').then(
         (module) => module.BookingCheckoutComponent
+      )
+  },
+  {
+    path: 'admin/events',
+    canActivate: [AdminGuard],
+    loadComponent: () =>
+      import('./features/admin/admin-events.component').then((module) => module.AdminEventsComponent)
+  },
+  {
+    path: 'admin/bookings',
+    canActivate: [AdminGuard],
+    loadComponent: () =>
+      import('./features/admin/admin-bookings.component').then(
+        (module) => module.AdminBookingsComponent
       )
   },
   { path: '**', redirectTo: 'events' }

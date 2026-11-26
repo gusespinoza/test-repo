@@ -2,6 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 
+import { AuthService } from './core/auth/auth.service';
+
 interface ApiHealth {
   status: string;
   service: string;
@@ -15,6 +17,7 @@ interface ApiHealth {
 })
 export class App {
   private readonly http = inject(HttpClient);
+  protected readonly auth = inject(AuthService);
   protected readonly apiStatus = signal<'loading' | 'online' | 'offline'>('loading');
 
   constructor() {

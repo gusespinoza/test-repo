@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Event, EventInput, EventPage } from './events.models';
+import { AdminEventPage, Event, EventDetail, EventInput, EventPage } from './events.models';
 
 @Injectable({ providedIn: 'root' })
 export class EventsService {
@@ -14,8 +14,13 @@ export class EventsService {
     return this.http.get<EventPage>(this.endpoint, { params });
   }
 
-  getEvent(id: string): Observable<Event> {
-    return this.http.get<Event>(`${this.endpoint}/${encodeURIComponent(id)}`);
+  listAdminEvents(page = 1, limit = 20): Observable<AdminEventPage> {
+    const params = new HttpParams().set('page', page).set('limit', limit);
+    return this.http.get<AdminEventPage>('/api/admin/events', { params });
+  }
+
+  getEvent(id: string): Observable<EventDetail> {
+    return this.http.get<EventDetail>(`${this.endpoint}/${encodeURIComponent(id)}`);
   }
 
   createEvent(input: EventInput): Observable<Event> {

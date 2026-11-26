@@ -9,8 +9,10 @@ import (
 )
 
 type fakeRepository struct {
-	created bool
-	order   domain.Order
+	created    bool
+	order      domain.Order
+	listOffset int
+	listLimit  int
 }
 
 func (r *fakeRepository) CreatePending(_ context.Context, userID string, input domain.CreateInput) (domain.Order, error) {
@@ -26,6 +28,11 @@ func (r *fakeRepository) CreatePending(_ context.Context, userID string, input d
 
 func (r *fakeRepository) FindByID(context.Context, string) (domain.Order, error) {
 	return r.order, nil
+}
+
+func (r *fakeRepository) ListAll(_ context.Context, offset, limit int) ([]domain.AdminBooking, int64, error) {
+	r.listOffset, r.listLimit = offset, limit
+	return []domain.AdminBooking{{UserEmail: "buyer@example.com", EventTitle: "Concert"}}, 31, nil
 }
 
 func (*fakeRepository) Confirm(context.Context, string, string) (domain.Order, error) {
@@ -113,5 +120,39 @@ func TestGetAllowsOwnerOrAdmin(t *testing.T) {
 	}
 	if _, err := service.Get(context.Background(), "other", "requester", "id"); !errors.Is(err, domain.ErrForbidden) {
 		t.Fatalf("expected forbidden error, got %v", err)
+	}
+}
+
+func TestListAllCalculatesOffsetAndPageMetadata(t *testing.T) {
+	t.Parallel()
+
+	repository := &fakeRepository{}
+	result, err := New(repository).ListAll(context.Background(), 3, 7)
+	if err != nil {
+		t.Fatalf("list all bookings: %v", err)
+	}
+	if repository.listOffset != 14 || repository.listLimit != 7 {
+		t.Fatalf("unexpected query range: offset=%d limit=%d", repository.listOffset, repository.listLimit)
+	}
+	if result.Page != 3 || result.Limit != 7 || result.Total != 31 ||
+		result.Items[0].UserEmail != "buyer@example.com" || result.Items[0].EventTitle != "Concert" {
+		t.Fatalf("unexpected admin page result: %+v", result)
+	}
+}
+
+func TestListAllRejectsInvalidPagination(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		page, limit int
+	}{
+		{page: 0, limit: 20},
+		{page: 1, limit: 101},
+		{page: int(^uint(0) >> 1), limit: 100},
+	} {
+		_, err := New(&fakeRepository{}).ListAll(context.Background(), test.page, test.limit)
+		if !errors.Is(err, domain.ErrInvalidPageRange) {
+			t.Errorf("ListAll(%d, %d) error = %v, want invalid page range", test.page, test.limit, err)
+		}
 	}
 }

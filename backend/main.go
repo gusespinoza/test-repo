@@ -24,6 +24,7 @@ import (
 	bookinghandlers "angular-go-starter/backend/internal/bookings/handlers"
 	bookingrepository "angular-go-starter/backend/internal/bookings/repository"
 	bookingservice "angular-go-starter/backend/internal/bookings/service"
+	"angular-go-starter/backend/internal/cleanup"
 	eventhandlers "angular-go-starter/backend/internal/events/handlers"
 	eventrepository "angular-go-starter/backend/internal/events/repository"
 	eventservice "angular-go-starter/backend/internal/events/service"
@@ -111,8 +112,10 @@ func run() error {
 	mux.Handle("POST /api/auth/logout", authMiddleware.RequireAuthentication(http.HandlerFunc(authHandler.Logout)))
 	mux.HandleFunc("GET /api/events", eventsHandler.List)
 	mux.HandleFunc("GET /api/events/{id}", eventsHandler.Get)
+	mux.Handle("GET /api/admin/events", requireAdmin(http.HandlerFunc(eventsHandler.AdminList)))
 	mux.Handle("POST /api/events", requireAdmin(http.HandlerFunc(eventsHandler.Create)))
 	mux.Handle("PUT /api/events/{id}", requireAdmin(http.HandlerFunc(eventsHandler.Update)))
+	mux.Handle("GET /api/admin/bookings", requireAdmin(http.HandlerFunc(bookingsHandler.AdminList)))
 	mux.Handle("POST /api/bookings", requireAuthentication(http.HandlerFunc(bookingsHandler.Create)))
 	mux.Handle("GET /api/bookings/{id}", requireAuthentication(http.HandlerFunc(bookingsHandler.Get)))
 	mux.Handle("POST /api/bookings/{id}/confirm", requireAuthentication(http.HandlerFunc(bookingsHandler.Confirm)))
@@ -124,8 +127,20 @@ func run() error {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
+	go func() {
+		select {
+		case <-signals:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	cleanup.StartCleanupWorker(ctx, db)
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

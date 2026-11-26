@@ -22,6 +22,11 @@ type Event struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+type EventDetail struct {
+	Event
+	Available int `json:"available"`
+}
+
 type EventInput struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
@@ -35,4 +40,16 @@ type EventPage struct {
 	Page  int     `json:"page"`
 	Limit int     `json:"limit"`
 	Total int64   `json:"total"`
+}
+
+type AdminEvent struct {
+	Event
+	Sold int `json:"sold"`
+}
+
+type AdminEventPage struct {
+	Items []AdminEvent `json:"items"`
+	Page  int          `json:"page"`
+	Limit int          `json:"limit"`
+	Total int64        `json:"total"`
 }

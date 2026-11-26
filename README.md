@@ -29,6 +29,7 @@ El esquema de autenticación crea `auth_users` y `auth_refresh_tokens`; el esque
 ## Eventos
 
 - `GET /api/events?page=1&limit=20` lista eventos con paginación (el límite máximo es 100).
+- `GET /api/admin/events?page=1&limit=20` requiere rol `admin` y devuelve los eventos paginados con el total vendido en `sold`.
 - `GET /api/events/{id}` devuelve un evento.
 - `POST /api/events` y `PUT /api/events/{id}` requieren un JWT con rol `admin`.
 - Para crear o actualizar se exige `title` y `venue` no vacíos, `starts_at` en formato RFC3339 y `capacity` mayor que cero. `id` y `created_at` los controla el servidor y no se aceptan en el cuerpo.
@@ -40,6 +41,7 @@ El esquema de autenticación crea `auth_users` y `auth_refresh_tokens`; el esque
 - Las reservas `pending` vencen a los 10 minutos. Redis mantiene el contador temporal `booking:lock:<event_id>`; PostgreSQL serializa reservas y confirmaciones por evento para no sobrepasar la capacidad.
 - `POST /api/bookings/{id}/confirm` y `DELETE /api/bookings/{id}` requieren ser dueño de la orden. Confirmar registra las entradas vendidas en PostgreSQL; cancelar libera las entradas vendidas si corresponde y libera la retención de Redis.
 - `GET /api/bookings/{id}` permite consultar al dueño o a un usuario con rol `admin`.
+- `GET /api/admin/bookings?page=1&limit=20` requiere rol `admin` y lista todas las órdenes paginadas, incluyendo `user_email` y `event_title` obtenidos de PostgreSQL.
 - Aplica `backend/internal/bookings/repository/schema.sql` después de los esquemas de autenticación y eventos. Este añade el contador de ventas a `events` y crea `orders`.
 - El test de integración de reservas usa PostgreSQL y Redis efímeros: `go test -tags=integration ./internal/bookings/...`.
 
@@ -64,6 +66,8 @@ npm start
 ```
 
 Abre <http://localhost:4200>. Angular reenvía `/api` al backend en `localhost:8080`.
+
+El área de administración vive en `/admin/events` y `/admin/bookings`; sus rutas y el enlace del menú solo están disponibles para sesiones cuyo rol en memoria sea `admin`. La vista de eventos permite crear eventos y muestra ventas; la vista de reservas presenta las órdenes con paginación.
 
 ## Autenticación
 

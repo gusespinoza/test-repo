@@ -7,6 +7,9 @@
     <nav aria-label="Navegación principal">
       <a routerLink="/events" routerLinkActive="active">Eventos</a>
       <a routerLink="/bookings/new" routerLinkActive="active">Reservas</a>
+      @if (auth.role() === 'admin') {
+        <a routerLink="/admin/events" routerLinkActive="active">Admin</a>
+      }
     </nav>
     <span class="environment">
       <span class="environment-dot" [class.online]="apiStatus() === 'online'"

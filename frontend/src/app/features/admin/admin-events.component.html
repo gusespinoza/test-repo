@@ -1,0 +1,121 @@
+<section class="admin-page" aria-labelledby="admin-events-title">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">ADMINISTRACIÓN</p>
+      <h1 id="admin-events-title">Eventos</h1>
+      <p class="intro">Consulta las ventas y administra los eventos.</p>
+    </div>
+    <button
+      class="primary-button"
+      type="button"
+      [attr.aria-expanded]="createFormVisible()"
+      (click)="toggleCreateForm()">
+      Crear Evento
+    </button>
+  </div>
+
+  @if (createFormVisible()) {
+    <section class="form-panel" aria-labelledby="create-event-title">
+      <div class="panel-heading">
+        <h2 id="create-event-title">Nuevo evento</h2>
+        <button class="text-button" type="button" (click)="toggleCreateForm()">Cerrar</button>
+      </div>
+      <form #eventForm="ngForm" class="admin-form" (ngSubmit)="createEvent(eventForm)">
+        <div class="form-grid">
+          <label>
+            Título
+            <input name="title" [(ngModel)]="draft.title" required maxlength="200" />
+          </label>
+          <label>
+            Lugar
+            <input name="venue" [(ngModel)]="draft.venue" required maxlength="200" />
+          </label>
+          <label>
+            Fecha y hora
+            <input name="starts_at" type="datetime-local" [(ngModel)]="draft.starts_at" required />
+          </label>
+          <label>
+            Capacidad
+            <input
+              name="capacity"
+              type="number"
+              [(ngModel)]="draft.capacity"
+              min="1"
+              step="1"
+              required />
+          </label>
+          <label class="description-field">
+            Descripción
+            <textarea name="description" [(ngModel)]="draft.description" rows="3"></textarea>
+          </label>
+        </div>
+        @if (error()) {
+          <p class="message error" role="alert">{{ error() }}</p>
+        }
+        <div class="form-actions">
+          <button class="secondary-button" type="button" (click)="toggleCreateForm()">Cancelar</button>
+          <button class="primary-button" type="submit" [disabled]="submitting()">
+            {{ submitting() ? 'Guardando…' : 'Guardar Evento' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (success()) {
+    <p class="message success" role="status">{{ success() }}</p>
+  }
+  @if (!createFormVisible() && error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+    <button class="secondary-button" type="button" (click)="loadPage(pageNumber())">Reintentar</button>
+  }
+
+  @if (loading()) {
+    <p class="message" aria-live="polite">Cargando eventos…</p>
+  } @else if (result(); as page) {
+    @if (page.items.length === 0) {
+      <p class="message">Todavía no hay eventos.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Título</th>
+              <th scope="col">Fecha</th>
+              <th scope="col">Capacidad</th>
+              <th scope="col">Entradas vendidas</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (event of page.items; track event.id) {
+              <tr>
+                <th scope="row">{{ event.title }}</th>
+                <td><time [attr.datetime]="event.starts_at">{{ event.starts_at | date: 'medium' }}</time></td>
+                <td>{{ event.capacity }}</td>
+                <td>{{ event.sold }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <nav class="pagination" aria-label="Paginación de eventos de administración">
+      <button
+        class="secondary-button"
+        type="button"
+        [disabled]="pageNumber() <= 1"
+        (click)="previousPage()">
+        Anterior
+      </button>
+      <span>Página {{ page.page }} de {{ pageCount() }} · {{ page.total }} eventos</span>
+      <button
+        class="secondary-button"
+        type="button"
+        [disabled]="pageNumber() >= pageCount()"
+        (click)="nextPage()">
+        Siguiente
+      </button>
+    </nav>
+  }
+</section>

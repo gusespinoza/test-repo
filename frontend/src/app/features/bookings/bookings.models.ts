@@ -11,6 +11,18 @@ export interface Order {
   created_at: string;
 }
 
+export interface AdminBooking extends Order {
+  user_email: string;
+  event_title: string;
+}
+
+export interface AdminBookingPage {
+  items: AdminBooking[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
 export interface CreateBookingRequest {
   event_id: string;
   quantity: number;

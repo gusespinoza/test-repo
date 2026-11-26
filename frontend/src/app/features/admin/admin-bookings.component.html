@@ -1,0 +1,73 @@
+<section class="admin-page" aria-labelledby="admin-bookings-title">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">ADMINISTRACIÓN</p>
+      <h1 id="admin-bookings-title">Reservas</h1>
+      <p class="intro">Consulta las órdenes realizadas en el sistema.</p>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <p class="message" aria-live="polite">Cargando reservas…</p>
+  } @else if (error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+    <button class="secondary-button" type="button" (click)="loadPage(pageNumber())">Reintentar</button>
+  } @else if (result(); as page) {
+    @if (page.items.length === 0) {
+      <p class="message">Todavía no hay reservas.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">ID de orden</th>
+              <th scope="col">Email del comprador</th>
+              <th scope="col">Evento</th>
+              <th scope="col">Cantidad</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (booking of page.items; track booking.id) {
+              <tr>
+                <td><code class="order-id">{{ booking.id }}</code></td>
+                <td>{{ booking.user_email }}</td>
+                <td>{{ booking.event_title }}</td>
+                <td>{{ booking.quantity }}</td>
+                <td>
+                  <span
+                    class="status"
+                    [class.status-pending]="booking.status === 'pending'"
+                    [class.status-confirmed]="booking.status === 'confirmed'"
+                    [class.status-cancelled]="booking.status === 'cancelled'">
+                    {{ booking.status }}
+                  </span>
+                </td>
+                <td><time [attr.datetime]="booking.created_at">{{ booking.created_at | date: 'medium' }}</time></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <nav class="pagination" aria-label="Paginación de reservas">
+      <button
+        class="secondary-button"
+        type="button"
+        [disabled]="pageNumber() <= 1"
+        (click)="previousPage()">
+        Anterior
+      </button>
+      <span>Página {{ page.page }} de {{ pageCount() }} · {{ page.total }} reservas</span>
+      <button
+        class="secondary-button"
+        type="button"
+        [disabled]="pageNumber() >= pageCount()"
+        (click)="nextPage()">
+        Siguiente
+      </button>
+    </nav>
+  }
+</section>

@@ -3,17 +3,25 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"angular-go-starter/backend/internal/auth/middleware"
+	"angular-go-starter/backend/internal/auth/token"
 	"angular-go-starter/backend/internal/events/domain"
 )
 
 type fakeEventService struct {
-	page  int
-	limit int
+	page       int
+	limit      int
+	adminPage  int
+	adminLimit int
+	detail     domain.EventDetail
 }
 
 func (s *fakeEventService) List(_ context.Context, page, limit int) (domain.EventPage, error) {
@@ -21,8 +29,18 @@ func (s *fakeEventService) List(_ context.Context, page, limit int) (domain.Even
 	return domain.EventPage{Items: []domain.Event{}, Page: page, Limit: limit, Total: 0}, nil
 }
 
-func (*fakeEventService) FindByID(context.Context, string) (domain.Event, error) {
-	return domain.Event{}, domain.ErrEventNotFound
+func (s *fakeEventService) ListAdmin(_ context.Context, page, limit int) (domain.AdminEventPage, error) {
+	s.adminPage, s.adminLimit = page, limit
+	return domain.AdminEventPage{
+		Items: []domain.AdminEvent{{Event: domain.Event{ID: "event-id"}, Sold: 12}},
+		Page:  page,
+		Limit: limit,
+		Total: 1,
+	}, nil
+}
+
+func (s *fakeEventService) FindByID(context.Context, string) (domain.EventDetail, error) {
+	return s.detail, nil
 }
 
 func (*fakeEventService) Create(context.Context, domain.EventInput) (domain.Event, error) {
@@ -76,6 +94,83 @@ func TestListRejectsInvalidPagination(t *testing.T) {
 	}
 }
 
+func TestGetIncludesAvailable(t *testing.T) {
+	t.Parallel()
+
+	const eventID = "00000000-0000-0000-0000-000000000001"
+	handler := New(&fakeEventService{
+		detail: domain.EventDetail{
+			Event:     domain.Event{ID: eventID, Capacity: 20},
+			Available: 7,
+		},
+	})
+	request := httptest.NewRequest(http.MethodGet, "/api/events/"+eventID, nil)
+	request.SetPathValue("id", eventID)
+	response := httptest.NewRecorder()
+	handler.Get(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", response.Code, response.Body.String())
+	}
+	var result struct {
+		Available int `json:"available"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if result.Available != 7 {
+		t.Fatalf("expected available=7, got %d", result.Available)
+	}
+}
+
+func TestAdminListReturnsSoldAndUsesPagination(t *testing.T) {
+	t.Parallel()
+
+	events := &fakeEventService{}
+	handler := New(events)
+	response := httptest.NewRecorder()
+	handler.AdminList(response, httptest.NewRequest(http.MethodGet, "/api/admin/events?page=2&limit=5", nil))
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", response.Code, response.Body.String())
+	}
+	if events.adminPage != 2 || events.adminLimit != 5 {
+		t.Fatalf("unexpected pagination: page=%d limit=%d", events.adminPage, events.adminLimit)
+	}
+	var result domain.AdminEventPage
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(result.Items) != 1 || result.Items[0].Sold != 12 || result.Items[0].ID != "event-id" {
+		t.Fatalf("unexpected admin events response: %+v", result)
+	}
+}
+
+func TestAdminListRejectsNonAdmin(t *testing.T) {
+	t.Parallel()
+
+	tokens, err := token.NewManager("0123456789abcdef0123456789abcdef", "test", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawToken, _, err := tokens.Issue("user-123", "requester")
+	if err != nil {
+		t.Fatal(err)
+	}
+	authenticator := middleware.NewAuthenticator(tokens, noRevocations{}, log.New(io.Discard, "", 0))
+	protected := authenticator.RequireAuthentication(
+		authenticator.RequireRoles("admin")(http.HandlerFunc(New(&fakeEventService{}).AdminList)),
+	)
+	request := httptest.NewRequest(http.MethodGet, "/api/admin/events", nil)
+	request.Header.Set("Authorization", "Bearer "+rawToken)
+	response := httptest.NewRecorder()
+	protected.ServeHTTP(response, request)
+
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403 for non-admin, got %d", response.Code)
+	}
+}
+
 func TestWriteEndpointsRejectInvalidDatesAndProtectedFields(t *testing.T) {
 	t.Parallel()
 
@@ -114,6 +209,13 @@ func TestWriteEndpointsRejectInvalidDatesAndProtectedFields(t *testing.T) {
 					t.Errorf("%s returned %d, want 400", method, response.Code)
 				}
 			}
+
 		})
 	}
+}
+
+type noRevocations struct{}
+
+func (noRevocations) IsRevoked(context.Context, string) (bool, error) {
+	return false, nil
 }

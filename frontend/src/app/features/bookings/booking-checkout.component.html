@@ -1,67 +1,146 @@
 <section class="checkout-page" aria-labelledby="checkout-title">
-  <a class="back-link" routerLink="/bookings/new">← Volver a reservas</a>
-
-  @if (loading()) {
-    <p class="message" aria-live="polite">Cargando reserva...</p>
-  } @else if (error() && !booking()) {
-    <p class="message error" role="alert">{{ error() }}</p>
-  } @else if (booking(); as order) {
-    <article class="checkout-card">
-      <p class="eyebrow">CHECKOUT</p>
-      <h1 id="checkout-title">Tu reserva</h1>
-      <dl>
-        <div>
-          <dt>Evento</dt>
-          <dd>{{ order.event_id }}</dd>
-        </div>
-        <div>
-          <dt>Cantidad</dt>
-          <dd>{{ order.quantity }}</dd>
-        </div>
-        <div>
-          <dt>Creada</dt>
-          <dd>{{ order.created_at | date: 'medium' }}</dd>
-        </div>
-        <div>
-          <dt>Estado</dt>
-          <dd class="status" [attr.data-status]="order.status">{{ order.status }}</dd>
-        </div>
-      </dl>
-
-      @if (order.status === 'pending') {
-        <div class="countdown" aria-live="polite">
-          @if (secondsRemaining() > 0) {
-            <span>Tiempo para confirmar</span>
-            <strong>{{ countdown() }}</strong>
-          } @else {
-            <span>La reserva venció</span>
-            <strong>0:00</strong>
-          }
-        </div>
-      } @else if (order.status === 'confirmed') {
-        <p class="message success">Reserva confirmada.</p>
-      } @else {
-        <p class="message">Esta reserva ya fue cancelada.</p>
-      }
-
-      @if (error()) {
-        <p class="error" role="alert">{{ error() }}</p>
-      }
-
-      @if (order.status === 'pending') {
-        <div class="actions">
-          <button
-            class="primary-button"
-            type="button"
-            [disabled]="busy() || secondsRemaining() === 0"
-            (click)="confirm()">
-            {{ busy() ? 'Procesando...' : 'Confirmar reserva' }}
-          </button>
-          <button class="secondary-button" type="button" [disabled]="busy()" (click)="cancel()">
-            Cancelar reserva
-          </button>
-        </div>
-      }
+  @if (paymentSucceeded()) {
+    <article class="checkout-card success-card" aria-live="polite">
+      <p class="eyebrow">COMPRA CONFIRMADA</p>
+      <h1>¡Compra realizada!</h1>
+      <p class="message success">Tu reserva se confirmó correctamente.</p>
+      <a class="primary-button home-button" routerLink="/events">Volver al inicio</a>
     </article>
+  } @else {
+    <a class="back-link" routerLink="/bookings/new">← Volver a reservas</a>
+
+    @if (loading()) {
+      <p class="message" aria-live="polite">Cargando reserva...</p>
+    } @else if (error() && !booking()) {
+      <p class="message error" role="alert">{{ error() }}</p>
+    } @else if (booking(); as order) {
+      <article class="checkout-card">
+        <p class="eyebrow">CHECKOUT</p>
+        <h1 id="checkout-title">Tu reserva</h1>
+        <dl>
+          <div>
+            <dt>Evento</dt>
+            <dd>{{ order.event_id }}</dd>
+          </div>
+          <div>
+            <dt>Cantidad</dt>
+            <dd>{{ order.quantity }}</dd>
+          </div>
+          <div>
+            <dt>Creada</dt>
+            <dd>{{ order.created_at | date: 'medium' }}</dd>
+          </div>
+          <div>
+            <dt>Estado</dt>
+            <dd class="status" [attr.data-status]="order.status">{{ order.status }}</dd>
+          </div>
+        </dl>
+
+        @if (order.status === 'pending') {
+          <div class="countdown" aria-live="polite">
+            @if (secondsRemaining() > 0) {
+              <span>Tiempo para confirmar</span>
+              <strong>{{ countdown() }}</strong>
+            } @else {
+              <span>La reserva venció</span>
+              <strong>0:00</strong>
+            }
+          </div>
+        } @else if (order.status === 'confirmed') {
+          <p class="message success">Reserva confirmada.</p>
+        } @else {
+          <p class="message">Esta reserva ya fue cancelada.</p>
+        }
+
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+
+        @if (order.status === 'pending') {
+          @if (paymentVisible()) {
+            <section class="payment-gateway" aria-labelledby="payment-title">
+              <p class="eyebrow">PASARELA DE PAGO SIMULADA</p>
+              <h2 id="payment-title">Detalles de pago</h2>
+              <p class="demo-notice">
+                Demostración: no ingreses datos reales. Los campos no se guardan ni se envían.
+              </p>
+
+              @if (paymentProcessing()) {
+                <div class="payment-processing" role="status" aria-live="polite">
+                  <span class="spinner" aria-hidden="true"></span>
+                  <span>Procesando pago...</span>
+                </div>
+              } @else {
+                <form class="payment-form" autocomplete="off" (submit)="pay($event)">
+                  <div class="form-field">
+                    <label for="card-number">Número de tarjeta</label>
+                    <input
+                      id="card-number"
+                      name="card-number"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="0000 0000 0000 0000"
+                      maxlength="19"
+                      pattern="[0-9 ]{16,19}"
+                      required />
+                  </div>
+                  <div class="form-field">
+                    <label for="card-expiration">Fecha</label>
+                    <input
+                      id="card-expiration"
+                      name="card-expiration"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="MM/AA"
+                      maxlength="5"
+                      pattern="(0[1-9]|1[0-2])/[0-9]{2}"
+                      required />
+                  </div>
+                  <div class="form-field">
+                    <label for="card-cvc">CVC</label>
+                    <input
+                      id="card-cvc"
+                      name="card-cvc"
+                      type="password"
+                      inputmode="numeric"
+                      placeholder="•••"
+                      maxlength="4"
+                      pattern="[0-9]{3,4}"
+                      required />
+                  </div>
+                  <div class="payment-actions">
+                    <button class="primary-button" type="submit" [disabled]="busy()">
+                      Pagar
+                    </button>
+                    <button
+                      class="secondary-button"
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="paymentVisible.set(false)">
+                      Volver
+                    </button>
+                  </div>
+                </form>
+              }
+            </section>
+          }
+
+          <div class="actions">
+            @if (!paymentVisible()) {
+              <button
+                class="primary-button"
+                type="button"
+                [disabled]="busy() || secondsRemaining() === 0"
+                (click)="confirm()">
+                Continuar al pago
+              </button>
+            }
+            <button class="secondary-button" type="button" [disabled]="busy()" (click)="cancel()">
+              Cancelar reserva
+            </button>
+          </div>
+        }
+      </article>
+    }
   }
 </section>

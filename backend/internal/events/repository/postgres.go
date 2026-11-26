@@ -47,14 +47,46 @@ func (r *PostgresRepository) List(ctx context.Context, offset, limit int) ([]dom
 	return events, total, nil
 }
 
-func (r *PostgresRepository) FindByID(ctx context.Context, id string) (domain.Event, error) {
-	event, err := scanEvent(r.db.QueryRowContext(ctx, `
-		SELECT id::text, title, description, venue, starts_at, capacity, created_at, updated_at
+func (r *PostgresRepository) ListAdmin(ctx context.Context, offset, limit int) ([]domain.AdminEvent, int64, error) {
+	var total int64
+	if err := r.db.QueryRowContext(ctx, `SELECT count(*) FROM events`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id::text, title, description, venue, starts_at, capacity, created_at, updated_at, sold
+		FROM events
+		ORDER BY starts_at ASC, id ASC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	events := make([]domain.AdminEvent, 0, limit)
+	for rows.Next() {
+		event, err := scanAdminEvent(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return events, total, nil
+}
+
+func (r *PostgresRepository) FindByID(ctx context.Context, id string) (domain.EventDetail, error) {
+	event, err := scanEventDetail(r.db.QueryRowContext(ctx, `
+		SELECT id::text, title, description, venue, starts_at, capacity, created_at, updated_at,
+		       capacity - sold AS available
 		FROM events
 		WHERE id = $1::uuid
 	`, id))
 	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Event{}, domain.ErrEventNotFound
+		return domain.EventDetail{}, domain.ErrEventNotFound
 	}
 	return event, err
 }
@@ -96,6 +128,38 @@ func scanEvent(row scanner) (domain.Event, error) {
 		&event.Capacity,
 		&event.CreatedAt,
 		&event.UpdatedAt,
+	)
+	return event, err
+}
+
+func scanEventDetail(row scanner) (domain.EventDetail, error) {
+	var event domain.EventDetail
+	err := row.Scan(
+		&event.ID,
+		&event.Title,
+		&event.Description,
+		&event.Venue,
+		&event.StartsAt,
+		&event.Capacity,
+		&event.CreatedAt,
+		&event.UpdatedAt,
+		&event.Available,
+	)
+	return event, err
+}
+
+func scanAdminEvent(row scanner) (domain.AdminEvent, error) {
+	var event domain.AdminEvent
+	err := row.Scan(
+		&event.ID,
+		&event.Title,
+		&event.Description,
+		&event.Venue,
+		&event.StartsAt,
+		&event.Capacity,
+		&event.CreatedAt,
+		&event.UpdatedAt,
+		&event.Sold,
 	)
 	return event, err
 }

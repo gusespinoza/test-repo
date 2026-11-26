@@ -1,5 +1,6 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideRouter, Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 
 import { AuthService } from './auth.service';
@@ -14,7 +15,8 @@ describe('authInterceptor', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        provideRouter([])
       ]
     });
 
@@ -66,5 +68,33 @@ describe('authInterceptor', () => {
     });
 
     expect(results).toEqual(['ok', 'ok']);
+  });
+
+  it('clears the session and redirects when refresh fails', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
+
+    auth.login({ email: 'agent@example.com', password: 'secret' }).subscribe();
+    const login = httpTesting.expectOne('/api/auth/login');
+    login.flush({
+      access_token: 'old-access-token',
+      token_type: 'Bearer',
+      expires_in: 900,
+      role: 'agent'
+    });
+
+    let requestError: unknown;
+    http.get('/api/tickets/1').subscribe({ error: (error: unknown) => (requestError = error) });
+    httpTesting.expectOne('/api/tickets/1').flush(
+      { error: 'expired' },
+      { status: 401, statusText: 'Unauthorized' }
+    );
+
+    const refresh = httpTesting.expectOne('/api/auth/refresh');
+    refresh.flush({ error: 'refresh expired' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(requestError).toBeTruthy();
+    expect(auth.accessToken()).toBeNull();
+    expect(navigateSpy).toHaveBeenCalledWith('/events');
   });
 });

@@ -13,6 +13,7 @@ var (
 	ErrBookingExpired   = errors.New("reserva expirada")
 	ErrForbidden        = errors.New("sin permiso para acceder a la reserva")
 	ErrRedisUnavailable = errors.New("servicio de reservas no disponible")
+	ErrInvalidPageRange = errors.New("paginación inválida")
 )
 
 type Status string
@@ -32,6 +33,19 @@ type Order struct {
 	IdempotencyKey string    `json:"idempotency_key"`
 	ExpiresAt      time.Time `json:"expires_at"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+type AdminBooking struct {
+	Order
+	UserEmail  string `json:"user_email"`
+	EventTitle string `json:"event_title"`
+}
+
+type AdminBookingPage struct {
+	Items []AdminBooking `json:"items"`
+	Page  int            `json:"page"`
+	Limit int            `json:"limit"`
+	Total int64          `json:"total"`
 }
 
 type CreateInput struct {

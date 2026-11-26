@@ -9,6 +9,10 @@ export interface Event {
   updated_at: string;
 }
 
+export interface EventDetail extends Event {
+  available: number;
+}
+
 export interface EventInput {
   title: string;
   description: string;
@@ -19,6 +23,17 @@ export interface EventInput {
 
 export interface EventPage {
   items: Event[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface AdminEvent extends Event {
+  sold: number;
+}
+
+export interface AdminEventPage {
+  items: AdminEvent[];
   page: number;
   limit: number;
   total: number;

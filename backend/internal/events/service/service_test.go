@@ -22,8 +22,13 @@ func (r *fakeRepository) List(_ context.Context, offset, limit int) ([]domain.Ev
 	return []domain.Event{}, 31, nil
 }
 
-func (*fakeRepository) FindByID(context.Context, string) (domain.Event, error) {
-	return domain.Event{}, domain.ErrEventNotFound
+func (r *fakeRepository) ListAdmin(_ context.Context, offset, limit int) ([]domain.AdminEvent, int64, error) {
+	r.offset, r.limit = offset, limit
+	return []domain.AdminEvent{{Sold: 3}}, 31, nil
+}
+
+func (*fakeRepository) FindByID(context.Context, string) (domain.EventDetail, error) {
+	return domain.EventDetail{}, domain.ErrEventNotFound
 }
 
 func (r *fakeRepository) Create(_ context.Context, input domain.EventInput) (domain.Event, error) {
@@ -51,6 +56,22 @@ func TestListCalculatesOffsetAndPageMetadata(t *testing.T) {
 	}
 	if result.Page != 3 || result.Limit != 7 || result.Total != 31 || result.Items == nil {
 		t.Fatalf("unexpected page result: %+v", result)
+	}
+}
+
+func TestListAdminCalculatesOffsetAndPageMetadata(t *testing.T) {
+	t.Parallel()
+
+	repository := &fakeRepository{}
+	result, err := New(repository).ListAdmin(context.Background(), 3, 7)
+	if err != nil {
+		t.Fatalf("list admin events: %v", err)
+	}
+	if repository.offset != 14 || repository.limit != 7 {
+		t.Fatalf("unexpected query range: offset=%d limit=%d", repository.offset, repository.limit)
+	}
+	if result.Page != 3 || result.Limit != 7 || result.Total != 31 || result.Items[0].Sold != 3 {
+		t.Fatalf("unexpected admin page result: %+v", result)
 	}
 }
 
